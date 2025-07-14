@@ -1,9 +1,9 @@
 # --- START OF FILE scanner_receiver.py ---
+
 import socket
 import numpy as np
 import os
 
-# Tenta importar a função de geração de STL. Se não existir, avisa.
 try:
     from generate_stl import generate_mesh
     GENERATE_STL_AVAILABLE = True
@@ -12,42 +12,29 @@ except ImportError:
     GENERATE_STL_AVAILABLE = False
 
 
-HOST = '0.0.0.0'    # Escuta todas as interfaces de rede disponíveis
+HOST = '0.0.0.0'
 PORT = 5000
+# Os nomes dos ficheiros são definidos aqui, no script principal.
 DATA_FILENAME = "3dScanner_Data.txt"
-OUTPUT_STL_FILENAME = "scanner_output.stl"
+OUTPUT_STL_FILENAME = "scanner_output_open3d.stl"
 
 def get_local_ip():
-    """Tenta encontrar o endereço IP local da máquina para facilitar a configuração."""
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
-        s.connect(('10.255.255.255', 1))
-        IP = s.getsockname()[0]
-    except Exception:
-        IP = '127.0.0.1'
-    finally:
-        s.close()
+        s.connect(('10.255.255.255', 1)); IP = s.getsockname()[0]
+    except Exception: IP = '127.0.0.1'
+    finally: s.close()
     return IP
 
 def process_data(data_line: str):
-    """
-    Analisa uma string de dados do Arduino, converte e retorna os valores.
-    Formato esperado: "Dist:123,Theta:90,Z:10.00"
-    """
     try:
-        parts = data_line.strip().split(',')
-        distance = int(parts[0].split(':')[1])
-        theta_deg = float(parts[1].split(':')[1])
-        height = float(parts[2].split(':')[1])
+        parts = data_line.strip().split(',');
+        distance = int(parts[0].split(':')[1]); theta_deg = float(parts[1].split(':')[1]); height = float(parts[2].split(':')[1])
         return distance, theta_deg, height
     except (ValueError, IndexError) as e:
-        print(f"[Erro] Dados recebidos em formato inválido: '{data_line}'. Erro: {e}")
-        return None
+        print(f"[Erro] Dados recebidos em formato inválido: '{data_line}'. Erro: {e}"); return None
 
 def main():
-    """
-    Função principal que orquestra a receção de dados e a geração da malha.
-    """
     if os.path.exists(DATA_FILENAME):
         print(f"A limpar o ficheiro de dados anterior: {DATA_FILENAME}")
         os.remove(DATA_FILENAME)
@@ -72,49 +59,35 @@ def main():
             while not should_exit:
                 try:
                     data_bytes = conn.recv(1024)
-                    if not data_bytes:
-                        print("\n[!] Conexão fechada pelo scanner.")
-                        break
-                    
+                    if not data_bytes: print("\n[!] Conexão fechada pelo scanner."); break
                     buffer += data_bytes.decode('utf-8')
                     
                     while '\n' in buffer:
                         line, buffer = buffer.split('\n', 1)
                         line = line.strip()
-                        if not line:
-                            continue
+                        if not line: continue
                         
                         if line.upper() == "END":
-                            print("\n[+] Sinal de 'END' recebido. A terminar a receção de dados.")
-                            should_exit = True
-                            break
+                            print("\n[+] Sinal de 'END' recebido."); should_exit = True; break
 
                         result = process_data(line)
                         if result:
                             distance, theta_deg, height = result
                             theta_rad = np.deg2rad(theta_deg)
-                            x = distance * np.cos(theta_rad)
-                            y = distance * np.sin(theta_rad)
-                            z = height
-
+                            x = distance * np.cos(theta_rad); y = distance * np.sin(theta_rad); z = height
                             f_points.write(f"{x:.6f},{y:.6f},{z:.6f}\n")
                             point_count += 1
                             print(f"\rPontos recebidos: {point_count}", end="")
 
-                except (ConnectionResetError, BrokenPipeError):
-                    print("\n[!] A conexão com o scanner foi perdida.")
-                    break
-                except KeyboardInterrupt:
-                    print("\n[!] Interrupção manual. A parar o servidor.")
-                    break
+                except (ConnectionResetError, BrokenPipeError): print("\n[!] A conexão com o scanner foi perdida."); break
+                except KeyboardInterrupt: print("\n[!] Interrupção manual."); break
 
     print(f"\n\nRecolha de dados concluída. {point_count} pontos guardados em '{DATA_FILENAME}'.")
 
-    if GENERATE_STL_AVAILABLE and point_count > 0:
+    if GENERATE_STL_AVAILABLE and point_count > 20:
         print(f"A iniciar a geração do ficheiro STL: '{OUTPUT_STL_FILENAME}'...")
         try:
             generate_mesh(input_filepath=DATA_FILENAME, output_filepath=OUTPUT_STL_FILENAME)
-            print("[Sucesso] Ficheiro STL gerado com sucesso!")
         except Exception as e:
             print(f"[Erro] Ocorreu um erro durante a geração do STL: {e}")
 
