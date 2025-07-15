@@ -58,7 +58,7 @@ void setup() {
   motorPrato.setAcceleration(400);
 
   Serial.println("Fase 1: Homing do eixo Z...");
-  motorZ.setSpeed(500);
+  motorZ.setSpeed(-500);
   unsigned long tempoPrimeiroSinalLow = 0;
   const int intervaloDebounce = 50;
   bool botaoConfirmadoPressionado = false;
