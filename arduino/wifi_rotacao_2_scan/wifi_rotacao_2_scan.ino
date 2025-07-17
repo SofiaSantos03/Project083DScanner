@@ -25,7 +25,7 @@ const int PINO_MOTOR_PRATO_IN1 = 2; const int PINO_MOTOR_PRATO_IN2 = 3; const in
 // [ALTERAÇÃO] Como voltamos para HALF4WIRE, o número de passos calibrado é duplicado.
 const long PASSOS_POR_ROTACAO_PRATO = 4174; 
 
-const int PINO_FIM_DE_CURSO = 13;
+const int PINO_FIM_DE_CURSO = 12;
 const float ALTURA_MAXIMA_FISICA_MM = 160.0; 
 
 // --- INICIALIZAÇÃO DOS OBJETOS ---
