@@ -1,4 +1,3 @@
-# --- START OF FILE scanner_receiver.py ---
 
 import socket
 import numpy as np
@@ -18,10 +17,11 @@ DATA_FILENAME = "3dScanner_Data.txt"
 OUTPUT_STL_FILENAME = "output_universal_solid.stl"
 
 # =======================================================================
-# VERIFIQUE ESTE VALOR!
-# Meça com uma régua a distância EXATA da lente do seu sensor até ao CENTRO
-# do prato rotativo. Coloque esse valor exato aqui em milímetros.
-SENSOR_OFFSET_MM = 175.0 # <--- MUDE ESTE VALOR PARA A SUA MEDIÇÃO REAL!
+# ===                   CONFIGURAÇÃO FINAL CALIBRADA                  ===
+# =======================================================================
+SENSOR_OFFSET_MM = 107.35 
+OFFSET_X = -24.0 # Ajuste para centrar o objeto
+OFFSET_Y = -4.0 # Ajuste para centrar o objeto
 # =======================================================================
 
 def get_local_ip():
@@ -34,7 +34,6 @@ def get_local_ip():
 def process_data(data_line: str):
     try:
         parts = data_line.strip().split(',')
-        # Formato esperado: "Dist:123,Theta:45,Z:10.00"
         distance = int(parts[0].split(':')[1])
         theta_deg = int(parts[1].split(':')[1])
         height = float(parts[2].split(':')[1])
@@ -59,6 +58,8 @@ def main():
             print(f"\n[+] Scanner conectado de {addr}")
             point_count = 0
             buffer = ""
+            scan_complete = False 
+            
             while True:
                 try:
                     data_bytes = conn.recv(1024)
@@ -71,22 +72,26 @@ def main():
                         if not line: continue
                         
                         if line.upper() == "END":
-                            print("\n[+] Sinal de 'END' recebido."); return # Sai da função main
-
+                            print("\n[+] Sinal de 'END' recebido.")
+                            scan_complete = True
+                            break 
+                        
                         result = process_data(line)
                         if result:
-                            distance, theta_deg, height = result
-                            if distance < SENSOR_OFFSET_MM and distance > 0:
+                            distance_d, theta_deg, height = result
+                            if 0 < distance_d < SENSOR_OFFSET_MM:
+                                radius = SENSOR_OFFSET_MM - float(distance_d)
                                 theta_rad = np.deg2rad(theta_deg)
-                                radius = SENSOR_OFFSET_MM - distance
-                                x = radius * np.cos(theta_rad)
-                                y = radius * np.sin(theta_rad)
+                                x = OFFSET_X + radius * np.cos(theta_rad)
+                                y = OFFSET_Y + radius * np.sin(theta_rad)
                                 z = height
-                                
+                                point_count += 1
                                 f_points.write(f"{x:.6f},{y:.6f},{z:.6f}\n")
                                 f_points.flush()
-                                point_count += 1
-                                print(f"\rPontos Aceites: {point_count}", end="")
+                    
+                    if scan_complete:
+                        break 
+
                 except (ConnectionResetError, BrokenPipeError): print("\n[!] A conexão foi perdida."); break
                 except KeyboardInterrupt: print("\n[!] Interrupção manual."); break
 

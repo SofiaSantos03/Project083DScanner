@@ -37,7 +37,6 @@ def read_new_points(file_handle):
             except (ValueError, IndexError):
                 pass
     
-    # ALTERAÇÃO: Removemos a conversão "/ 1000.0". Os dados agora ficam em mm.
     return np.array(new_points) if new_points else None
 
 def update_axis_limits(ax, new_points):
@@ -63,7 +62,6 @@ def main():
     fig = plt.figure(figsize=(8, 8))
     ax = fig.add_subplot(111, projection='3d')
     
-    # ALTERAÇÃO: Mudamos as legendas dos eixos para (mm)
     ax.set_xlabel('X (mm)')
     ax.set_ylabel('Y (mm)')
     ax.set_zlabel('Z (mm)')

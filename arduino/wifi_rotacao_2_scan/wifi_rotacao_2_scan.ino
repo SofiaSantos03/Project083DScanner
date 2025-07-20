@@ -1,7 +1,7 @@
 // =======================================================================
 // ===     CÓDIGO FIRMWARE FINAL E CALIBRADO PARA SCANNER 3D           ===
 // =======================================================================
-// Versão: 2.0 - Calibração de Distância + Suavização por Média
+// Versão: 2.2 - Correção da Leitura de Altura + Calibração de Precisão
 // =======================================================================
 
 #include <WiFiS3.h>
@@ -22,8 +22,7 @@ const int port = 5000;
 
 // --- CALIBRAÇÃO E MELHORIA DE QUALIDADE ---
 // Fator para corrigir a precisão da distância.
-// Fator = Distância REAL / Distância LIDA = 140 / 144 = 0.9722
-const float FATOR_CORRECAO_DISTANCIA = 0.9722;
+const float FATOR_CORRECAO_DISTANCIA = 0.9956;
 
 // Número de leituras a fazer por cada ponto para reduzir o ruído.
 const int NUMERO_DE_AMOSTRAS = 5;
@@ -61,7 +60,7 @@ void setup() {
   while (!Serial);
 
   Serial.println("\n--- Scanner 3D - MODO CALIBRADO FINAL ---");
-  Serial.print("Fator de Correção de Distância: "); Serial.println(FATOR_CORRECAO_DISTANCIA);
+  Serial.print("Fator de Correção de Distância: "); Serial.println(FATOR_CORRECAO_DISTANCIA, 4);
 
   Serial.print("Tentando conectar a rede: "); Serial.println(ssid);
   while (status != WL_CONNECTED) { status = WiFi.begin(ssid, pass); delay(5000); Serial.print("."); }
@@ -93,10 +92,24 @@ void setup() {
   Serial.println(" Posição inicial atingida.");
   
   Serial.println("\n----------------------------------------------------");
+  
+  // CORREÇÃO: Limpa qualquer dado antigo do buffer serial
+  while (Serial.available() > 0) {
+    Serial.read();
+  }
+
   Serial.println("Por favor, insira a altura máxima do scan em milímetros (mm)");
   while (Serial.available() == 0) { delay(100); }
   alturaMaximaScanMM = Serial.parseFloat();
-  if (alturaMaximaScanMM > ALTURA_MAXIMA_FISICA_MM) { Serial.print("AVISO: Altura excede o limite físico. Ajustando para "); Serial.print(ALTURA_MAXIMA_FISICA_MM); Serial.println(" mm."); alturaMaximaScanMM = ALTURA_MAXIMA_FISICA_MM; }
+  if (alturaMaximaScanMM <= 0 || alturaMaximaScanMM > ALTURA_MAXIMA_FISICA_MM) { 
+    if (alturaMaximaScanMM > ALTURA_MAXIMA_FISICA_MM) {
+        Serial.print("AVISO: Altura excede o limite físico. Ajustando para "); Serial.print(ALTURA_MAXIMA_FISICA_MM); Serial.println(" mm."); 
+        alturaMaximaScanMM = ALTURA_MAXIMA_FISICA_MM; 
+    } else {
+        Serial.println("AVISO: Altura inválida. Usando o valor máximo de 160 mm.");
+        alturaMaximaScanMM = ALTURA_MAXIMA_FISICA_MM;
+    }
+  }
   Serial.print("Altura máxima do scan definida para: "); Serial.print(alturaMaximaScanMM); Serial.println(" mm");
   Serial.println("----------------------------------------------------"); delay(2000);
   Serial.print("Conectando ao servidor "); Serial.print(server); Serial.print(":"); Serial.println(port);
