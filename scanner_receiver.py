@@ -1,3 +1,4 @@
+# --- START OF FILE scanner_receiver.py (COM PERFIS DE CALIBRAÇÃO REFINADOS) ---
 
 import socket
 import numpy as np
@@ -17,12 +18,27 @@ DATA_FILENAME = "3dScanner_Data.txt"
 OUTPUT_STL_FILENAME = "output_universal_solid.stl"
 
 # =======================================================================
-# ===                   CONFIGURAÇÃO FINAL CALIBRADA                  ===
+# ===               CONFIGURAÇÃO DE CALIBRAÇÃO COM PERFIS             ===
 # =======================================================================
-SENSOR_OFFSET_MM = 107.35 
-OFFSET_X = -24.0 # Ajuste para centrar o objeto
-OFFSET_Y = -4.0 # Ajuste para centrar o objeto
+# Descomente o perfil que pretende usar antes de executar o script.
+
+# --- PERFIL 1: Para objetos CURVOS/ORGÂNICOS (Cilindros, estátuas, etc.) ---
+# Descrição: Alta precisão para superfícies suaves.
+# SENSOR_OFFSET_MM = 107.35 
+# OFFSET_X = -24.0
+# OFFSET_Y = -4.0
+
+# --- PERFIL 2: Para objetos QUADRADOS/CANTOS VIVOS (Caixas, peças) ---
+# Descrição: Compensa o efeito do "cone de luz" em cantos vivos.
+# VALOR REFINADO APÓS O SEGUNDO TESTE
+# --- PERFIL 2: Para objetos QUADRADOS/CANTOS VIVOS (Caixas, peças) ---
+# VOLTANDO AO VALOR ANTERIOR PARA VERIFICAR A CONSISTÊNCIA
+SENSOR_OFFSET_MM = 105.10 
+OFFSET_X = -24.0
+OFFSET_Y = -4.0
+
 # =======================================================================
+
 
 def get_local_ip():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -58,7 +74,7 @@ def main():
             print(f"\n[+] Scanner conectado de {addr}")
             point_count = 0
             buffer = ""
-            scan_complete = False 
+            scan_complete = False
             
             while True:
                 try:
@@ -74,7 +90,7 @@ def main():
                         if line.upper() == "END":
                             print("\n[+] Sinal de 'END' recebido.")
                             scan_complete = True
-                            break 
+                            break
                         
                         result = process_data(line)
                         if result:
@@ -90,8 +106,8 @@ def main():
                                 f_points.flush()
                     
                     if scan_complete:
-                        break 
-
+                        break
+                                
                 except (ConnectionResetError, BrokenPipeError): print("\n[!] A conexão foi perdida."); break
                 except KeyboardInterrupt: print("\n[!] Interrupção manual."); break
 

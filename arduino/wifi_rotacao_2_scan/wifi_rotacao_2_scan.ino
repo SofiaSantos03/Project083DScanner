@@ -37,7 +37,7 @@ const int NUMERO_DE_AMOSTRAS = 5;
 const int PINO_MOTOR_Z_IN1 = 6; const int PINO_MOTOR_Z_IN2 = 7; const int PINO_MOTOR_Z_IN3 = 8; const int PINO_MOTOR_Z_IN4 = 9;
 const float PASSOS_POR_MM_Z = 2068.20;
 const float ALTURA_CAMADA_MM = 1.0;
-const int   PASSO_ANGULAR_GRAUS = 2;
+const int   PASSO_ANGULAR_GRAUS = 1;
 const long PASSOS_PARA_SUBIR_INICIAL = round(10.0 * PASSOS_POR_MM_Z);
 const long PASSOS_PARA_SUBIR_CAMADA = round(ALTURA_CAMADA_MM * PASSOS_POR_MM_Z);
 const int PINO_MOTOR_PRATO_IN1 = 2; const int PINO_MOTOR_PRATO_IN2 = 3; const int PINO_MOTOR_PRATO_IN3 = 4; const int PINO_MOTOR_PRATO_IN4 = 5;

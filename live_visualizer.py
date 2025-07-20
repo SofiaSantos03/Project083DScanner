@@ -11,7 +11,6 @@ UPDATE_INTERVAL_SECONDS = 0.5
 
 # --- CONFIGURAÇÕES DO FILTRO DE RUÍDO (RADIUS) EM MILÍMETROS ---
 FILTER_NB_POINTS = 15
-# ALTERAÇÃO: O raio agora está em mm. 10mm = 1cm.
 FILTER_RADIUS = 10.0 # Raio de 10mm
 
 def apply_denoise_filter(points_np):
@@ -39,27 +38,41 @@ def read_new_points(file_handle):
     
     return np.array(new_points) if new_points else None
 
-def update_axis_limits(ax, new_points):
-    """Expande os limites dos eixos apenas se os novos pontos estiverem fora dos limites atuais."""
-    if len(new_points) == 0:
+# --- INÍCIO DA ALTERAÇÃO ---
+def set_equal_aspect_3d(ax, points):
+    """
+    Define os limites dos eixos para que a escala seja igual em X, Y e Z,
+    mantendo o objeto centrado.
+    """
+    if len(points) == 0:
         return
-    xlim, ylim, zlim = ax.get_xlim(), ax.get_ylim(), ax.get_zlim()
-    min_x, max_x = np.min(new_points[:, 0]), np.max(new_points[:, 0])
-    min_y, max_y = np.min(new_points[:, 1]), np.max(new_points[:, 1])
-    min_z, max_z = np.min(new_points[:, 2]), np.max(new_points[:, 2])
-    new_xlim = (min(xlim[0], min_x), max(xlim[1], max_x))
-    new_ylim = (min(ylim[0], min_y), max(ylim[1], max_y))
-    new_zlim = (min(zlim[0], min_z), max(zlim[1], max_z))
-    ax.set_xlim(new_xlim)
-    ax.set_ylim(new_ylim)
-    ax.set_zlim(new_zlim)
+
+    # Encontra os limites de todos os pontos
+    x_vals = points[:, 0]
+    y_vals = points[:, 1]
+    z_vals = points[:, 2]
+
+    max_range = np.array([x_vals.max()-x_vals.min(), y_vals.max()-y_vals.min(), z_vals.max()-z_vals.min()]).max()
+    
+    # Adiciona uma pequena margem para que os pontos não fiquem colados às bordas
+    max_range *= 1.1 
+
+    mid_x = (x_vals.max()+x_vals.min()) * 0.5
+    mid_y = (y_vals.max()+y_vals.min()) * 0.5
+    mid_z = (z_vals.max()+z_vals.min()) * 0.5
+    
+    ax.set_xlim(mid_x - max_range/2, mid_x + max_range/2)
+    ax.set_ylim(mid_y - max_range/2, mid_y + max_range/2)
+    ax.set_zlim(mid_z - max_range/2, mid_z + max_range/2)
+# --- FIM DA ALTERAÇÃO ---
 
 def main():
     print("--- Visualizador com Matplotlib (em Milímetros) ---")
     print(f"A observar o ficheiro: '{DATA_FILENAME}'...")
 
     plt.ion()
-    fig = plt.figure(figsize=(8, 8))
+    # Aumentar um pouco o tamanho da figura pode ajudar
+    fig = plt.figure(figsize=(10, 10))
     ax = fig.add_subplot(111, projection='3d')
     
     ax.set_xlabel('X (mm)')
@@ -67,42 +80,59 @@ def main():
     ax.set_zlabel('Z (mm)')
     
     scatter_plot = ax.scatter([], [], [], s=5, c='blue', alpha=0.7)
+    
+    # Definir limites iniciais para evitar um gráfico vazio
+    ax.set_xlim(-50, 50)
+    ax.set_ylim(-50, 50)
+    ax.set_zlim(0, 100)
+    set_equal_aspect_3d(ax, np.array([[-50,-50,0],[50,50,100]])) # Força o aspeto inicial
+    
     plt.show()
 
     all_filtered_points = np.empty((0, 3))
 
     try:
-        with open(DATA_FILENAME, 'r') as file_handle:
-            print("A carregar e filtrar pontos existentes...")
-            initial_points_raw = read_new_points(file_handle) 
+        # Apaga o ficheiro no início para garantir que começamos do zero (opcional)
+        # if os.path.exists(DATA_FILENAME):
+        #     os.remove(DATA_FILENAME)
+        # open(DATA_FILENAME, 'a').close() # Cria o ficheiro se não existir
             
-            if initial_points_raw is not None:
-                all_filtered_points = apply_denoise_filter(initial_points_raw)
-                scatter_plot._offsets3d = (all_filtered_points[:, 0], all_filtered_points[:, 1], all_filtered_points[:, 2])
-                ax.set_title(f"Nuvem de Pontos ({len(all_filtered_points)} pontos)")
-                ax.autoscale_view(True, True, True)
-                fig.canvas.draw_idle()
-                plt.pause(0.1)
-                print(f"Carregados e mostrados {len(all_filtered_points)} pontos filtrados.")
+        with open(DATA_FILENAME, 'r') as file_handle:
+            # Move o ponteiro para o final do ficheiro para ler apenas os novos dados
+            file_handle.seek(0, os.SEEK_END) 
 
             print("\nA aguardar novos pontos...")
             while plt.fignum_exists(fig.number):
                 new_points_raw = read_new_points(file_handle)
                 
                 if new_points_raw is not None:
-                    new_filtered_points = apply_denoise_filter(new_points_raw)
+                    # Filtramos apenas os novos pontos para ser mais eficiente
+                    # Adicionamos os pontos brutos primeiro e depois filtramos tudo
+                    all_filtered_points = np.vstack((all_filtered_points, new_points_raw))
                     
-                    if len(new_filtered_points) > 0:
-                        all_filtered_points = np.vstack((all_filtered_points, new_filtered_points))
-                        scatter_plot._offsets3d = (all_filtered_points[:, 0], all_filtered_points[:, 1], all_filtered_points[:, 2])
-                        ax.set_title(f"Nuvem de Pontos ({len(all_filtered_points)} pontos)")
-                        update_axis_limits(ax, new_filtered_points)
+                    # Filtramos todos os pontos para ter uma visão mais limpa
+                    # Pode ser pesado se a nuvem de pontos for muito grande
+                    points_to_display = apply_denoise_filter(all_filtered_points)
+
+                    if len(points_to_display) > 0:
+                        scatter_plot._offsets3d = (points_to_display[:, 0], points_to_display[:, 1], points_to_display[:, 2])
+                        ax.set_title(f"Nuvem de Pontos ({len(points_to_display)} pontos)")
+                        
+                        # --- INÍCIO DA ALTERAÇÃO ---
+                        # Usar a nova função para definir os limites
+                        set_equal_aspect_3d(ax, points_to_display)
+                        # --- FIM DA ALTERAÇÃO ---
+
                         fig.canvas.draw_idle()
 
                 plt.pause(UPDATE_INTERVAL_SECONDS)
 
     except FileNotFoundError:
         print(f"Erro: O ficheiro '{DATA_FILENAME}' não foi encontrado.")
+        print("A criar o ficheiro e a tentar novamente...")
+        open(DATA_FILENAME, 'a').close()
+        # Chama a função main() novamente após criar o ficheiro
+        main()
     except Exception as e:
         print(f"\nOcorreu um erro inesperado: {e}")
     finally:
