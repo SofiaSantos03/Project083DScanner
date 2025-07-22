@@ -22,7 +22,7 @@ const int port = 5000;
 
 // --- CALIBRAÇÃO E MELHORIA DE QUALIDADE ---
 // Fator para corrigir a precisão da distância.
-const float FATOR_CORRECAO_DISTANCIA = 0.9956;
+const float FATOR_CORRECAO_DISTANCIA =1.0;// 0.9956; valor real/valor medido(ou media do valor medido)
 
 // Número de leituras a fazer por cada ponto para reduzir o ruído.
 const int NUMERO_DE_AMOSTRAS = 5;
